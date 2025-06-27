@@ -4,10 +4,10 @@ import boto3
 from io import BytesIO
 print('Loading function')
 s3 = boto3.client('s3')
-response = s3.get_object(Bucket='retailbotbucket', Key='export_store_cfa_ext.xlsx')
+response = s3.get_object(Bucket='retailbotbucket', Key='export_store_cfa_ext.csv')
 
 excel_data = response['Body'].read()
-df = pd.read_excel(BytesIO(excel_data), engine='openpyxl')
+df = pd.read_csv(BytesIO(excel_data))
 print(df.head())
 def get_info_from_db(store_id, information_type):
     # Simulate database query
