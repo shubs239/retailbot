@@ -2,7 +2,7 @@ import json
 import pandas as pd
 import boto3
 from io import BytesIO
-
+print('Loading function')
 s3 = boto3.client('s3')
 response = s3.get_object(Bucket='retailbotbucket', Key='export_store_cfa_ext.xlsx')
 
@@ -20,12 +20,31 @@ def get_info_from_db(store_id, information_type):
         dts_flag = filtered_df['VARCHAR2_1']
         return cis_flag, dts_flag
     elif information_type=="opening_hours" or information_type=="closing_hours":
-        filtered_df = df[(df['STORE'] == store_id) & (df['GROUP_ID'] == 20013)]
-        opening_hours = filtered_df['VARCHAR2_3']
-        closing_hours = filtered_df['VARCHAR2_4']
-        return opening_hours, closing_hours
+        
+        filtered_df = df[(df['STORE'] == store_id) & (df['GROUP_ID'].isin([20016, 20017, 20018, 20019, 20020, 20021, 20022]))]
+        
+        day_map = {
+        20016: 'Monday',
+        20017: 'Tuesday',
+        20018: 'Wednesday',
+        20019: 'Thursday',
+        20020: 'Friday',
+        20021: 'Saturday',
+        20022: 'Sunday'
+        }
 
-    return dummy_data
+        
+        result_df = filtered_df.assign(
+         DAY_NAME=filtered_df['GROUP_ID'].map(day_map)
+        )[['STORE', 'DAY_NAME', 'VARCHAR2_1', 'VARCHAR2_2']]
+
+        result_df = result_df.rename(columns={'VARCHAR2_1':'OPEN_TIME', 'VARCHAR2_2': 'CLOSE_TIME' })
+
+        # opening_hours = result_df['VARCHAR2_1']
+        # closing_hours = result_df['VARCHAR2_2']
+        return result_df
+
+    #return dummy_data
 
 def lambda_handler(event, context):
 
@@ -41,8 +60,8 @@ def lambda_handler(event, context):
             cis_flag, dts_flag = get_info_from_db(store_id, information_type)
             response_message = f"Received store ID: {store_id}, info type: {information_type}, CIS_flag: {cis_flag}, DTS_flag: {dts_flag}"
         elif information_type == "opening_hours" or information_type == "closing_hours":
-            opening_hours, closing_hours = get_info_from_db(store_id, information_type)
-            response_message = f"Received store ID: {store_id}, info type: {information_type}, opening_hours: {opening_hours}, closing_hours: {closing_hours}"        
+            result_table = get_info_from_db(store_id, information_type)
+            response_message = f"Received store ID: {store_id}, info type: {information_type},Result: {result_table}"        
         return {
             "sessionState": {
                 "dialogAction": {
